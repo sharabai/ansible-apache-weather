@@ -1,0 +1,32 @@
+- name: set port in ports.conf on Debian
+  lineinfile:
+    path: /etc/apache2/ports.conf
+    regexp: '^Listen '
+    line: "Listen {{ apache_http_port }}"
+    backup: yes
+  register: ports_conf_modified
+
+- name: set port in VirtualHost on Debian
+  replace:
+    path: /etc/apache2/sites-enabled/000-default.conf
+    regexp: '(<VirtualHost \*:)\d+(>)'
+    # TODO: '\180\2' is used with replace
+    replace: '\g<1>{{ apache_http_port }}\g<2>'
+    backup: yes
+  notify: restart apache on Debian
+  register: vhost_conf_modified
+
+- name: validate config on Debian 
+  shell: apache2ctl -t 
+
+- name: force execution of handlers immediately
+  meta: flush_handlers
+
+- name: verify apache is responding locally on new port
+  uri:
+    url: "http://localhost:{{ apache_http_port }}"
+  register: response
+  until: response.status == 200
+  retries: 5
+  delay: 5
+  when: ports_conf_modified.changed or vhost_conf_modified.changed

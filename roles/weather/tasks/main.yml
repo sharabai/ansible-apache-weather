@@ -1,0 +1,26 @@
+---
+
+- name: fetch city coordinates
+  uri:
+    url: "{{ url_geo }}&q={{ city_name }}&appid={{ api_key }}"
+  register: geo_response
+  failed_when: 
+    - geo_response is failed
+    - geo_response.json is not defined
+
+- name: fetch weather 
+  uri:
+    url: "{{ url_one_call }}&lat={{ geo_response.json[0].lat }}&lon={{ geo_response.json[0].lon }}&appid={{ api_key }}"
+  register: weather_response
+  failed_when: 
+    - weather_response is failed
+    - weather_response.json is not defined
+
+- name: print weather overview
+  debug:
+    msg: "{{ weather_response.json.weather_overview }}"
+
+- name: store weather_response globally
+  set_fact:
+    cacheable: yes
+    weather_data: "{{ weather_response.json }}"

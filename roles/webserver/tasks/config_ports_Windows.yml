@@ -1,0 +1,39 @@
+- name: change port in httpd.conf on Windows
+  win_lineinfile: 
+    path: 'C:\Apache24\conf\httpd.conf'
+    regexp: '^Listen '
+    line: "Listen {{ apache_http_port }}"
+    backup: yes
+  register: win_conf_modified
+  notify: restart apache on Windows
+
+- name: force execution of handlers immediately
+  meta: flush_handlers
+
+- name: validate new config on Windows
+  win_shell: 'C:\Apache24\bin\httpd.exe -t'
+
+- name: verify apache is responding locally on new port on Windows
+  win_uri:
+    url: "http://localhost:{{ apache_http_port }}"
+  register: response
+  until: response.status_code == 200
+  retries: 5
+  delay: 5
+  when: win_conf_modified.changed
+
+- name: generate firewall script for Windows
+  win_template:
+    src: 'Change firewall inbound rule.ps1.j2'
+    dest: '{{ ansible_env.HOME }}\Change firewall inbound rule.ps1'
+  when: ansible_os_family == 'Windows'
+
+- name: execute firewall script 
+  win_shell: "& \"$HOME\\Change firewall inbound rule.ps1\""
+  register: script_execution
+
+- name: print script result
+  debug:
+    msg: 
+    - "stdout: {{ script_execution.stdout }}"
+    - "stderr: {{ script_execution.stderr }}"

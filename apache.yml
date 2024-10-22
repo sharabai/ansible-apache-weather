@@ -1,0 +1,9 @@
+- name: prepare weather data
+  hosts: main
+  roles:
+    - weather
+
+- name: run webservers Windows
+  hosts: win, linux
+  roles: 
+    - { role: webserver, weather_data: "{{ hostvars[groups['main'][0]]['weather_data'] }}" }

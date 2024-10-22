@@ -1,0 +1,25 @@
+$ruleName = "Apache-In-TCP"
+$ruleDisplayName = "Apache HTTP Server (Apache2.4)"
+$enabled = "True"
+$direction = "Inbound"
+$protocol = "TCP"
+$action = "Allow"
+$localPort = {{ apache_http_port }}
+
+$existingRule = Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue | Select-Object Name, Enabled
+
+if ($existingRule) {
+	$rulePort = Get-NetFirewallRule -Name $ruleName | Get-NetFirewallPortFilter | Select-Object LocalPort
+	
+    if ($existingRule.Enabled -and $rulePort.LocalPort -eq $localPort) {
+        Write-Host "Firewall rule '$ruleName' exists and is enabled with the correct port."
+    } else {
+        Write-Host "Firewall rule '$ruleName' exists but needs to be modified."
+        Set-NetFirewallRule -Name $ruleName -Enabled $enabled -LocalPort $localPort
+        Write-Host "Firewall rule '$ruleName' has been modified to use port $localPort."
+    }
+} else {
+    Write-Host "Firewall rule '$ruleName' does not exist, creating it..."
+    New-NetFirewallRule -Name $ruleName -DisplayName $ruleDisplayName -Enabled $enabled -Direction $direction -Protocol $protocol -Action $action -LocalPort $localPort
+    Write-Host "Firewall rule '$ruleName' has been created."
+}

@@ -1,0 +1,53 @@
+- name: download apache on Windows
+  win_get_url:
+    url: https://www.apachelounge.com/download/VS17/binaries/httpd-2.4.62-240904-win64-VS17.zip
+    dest: '{{ ansible_env.HOME }}\Downloads\apache24.zip'
+    force: no
+  register: download_result
+  
+- name: extract zip on Windows
+  win_unzip:
+    src: '{{ ansible_env.HOME }}\Downloads\apache24.zip'
+    dest: '{{ ansible_env.HOME }}\Downloads'
+  when: download_result.changed
+  register: extract_result
+
+- name: copy apache folder
+  win_copy:
+    src: '{{ ansible_env.HOME }}\Downloads\Apache24'
+    dest: 'C:\'
+    remote_src: yes
+  when: extract_result.changed
+
+- name: download Visual C++ Redistributable on Windows
+  win_get_url:
+    url: https://aka.ms/vs/17/release/VC_redist.x64.exe
+    dest: '{{ ansible_env.HOME }}\Downloads\VC_redist.x64.exe'
+    force: no
+
+- name: install Redistributable on Windows
+  win_package:
+    path: '{{ ansible_env.HOME }}\Downloads\VC_redist.x64.exe'
+    arguments: /quiet /install    
+  register: redist_install
+
+- name: debug installation status of redistributable on Windows
+  debug:
+    msg: "Visual C++ Redistributable installation status: {{ redist_install }}"
+
+- name: check service existence on Windows
+  win_service:
+    name: Apache2.4
+  register: apache_service_info
+  ignore_errors: true
+
+
+- name: install as a service on Windows
+  win_shell: cd 'C:\Apache24\bin' ; .\httpd.exe -k install
+  when: apache_service_info.exists == false
+  
+- name: set up service on Windows
+  win_service: 
+    name: Apache2.4
+    state: started
+    start_mode: auto

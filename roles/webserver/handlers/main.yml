@@ -1,0 +1,13 @@
+---
+
+- name: restart apache on Debian
+  service:
+    name: apache2
+    state: restarted
+  when: ansible_os_family == 'Debian'
+
+- name: restart apache on Windows
+  win_service:
+    name: Apache2.4
+    state: restarted
+  when: ansible_os_family == 'Windows'
